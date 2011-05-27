@@ -7,7 +7,8 @@ module Guard
   class Sprockets < Guard
     def initialize(watchers=[], options={})
       super 
-      @destination = options[:destination]
+      @destination = options.delete(:destination)
+      @opts = options
     end
 
     def start
@@ -19,7 +20,8 @@ module Guard
     end
 
     def run_on_change(paths)
-      sprocketize paths.first
+      paths.each{ |js| sprocketize(js)}
+      true
     end
     
     private
@@ -31,17 +33,19 @@ module Guard
       destination  = parts[1..-1].join('/')
       @destination ||= destination
       secretary = ::Sprockets::Secretary.new(
-        :asset_root            => "#{parts.first}",
-        :source_files          => ["#{path}"],
-        :interpolate_constants => false
+        {
+          :asset_root            => "#{parts.first}",
+          :source_files          => ["#{path}"],
+          :interpolate_constants => false
+        }.merge(@opts)
       )
       # Generate a Sprockets::Concatenation object from the source files
       concatenation = secretary.concatenation
       # Write the concatenation to disk
-      concatenation.save_to("#{@destination}/#{file}")
+      concatenation.save_to("#{@destination}/#{File.basename(path)}")
       # Install provided assets into the asset root
       secretary.install_assets
-      UI.info "Sprockets creating file #{@destination}/#{file}"
+      UI.info "Sprockets creating file #{@destination}/#{File.basename(path)}"
     end
   end
 end
